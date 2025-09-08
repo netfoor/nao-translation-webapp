@@ -25,11 +25,31 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {/* App-wide providers */}
+        {/* eslint-disable-next-line react/no-children-prop */}
+        <AppProviders children={children} />
       </body>
     </html>
   );
+}
+
+// Client wrapper for providers
+function AppProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      {/* AppContext is a client component provider */}
+      <ClientProvidersWrapper>{children}</ClientProvidersWrapper>
+    </>
+  );
+}
+
+// Isolate client providers to a client boundary
+// eslint-disable-next-line @next/next/no-typos
+function ClientProvidersWrapper({ children }: { children: React.ReactNode }) {
+  // This file is a server component; we dynamically import the client provider to avoid RSC issues
+  // The dynamic import is handled inline to keep the file minimal
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { AppProvider } = require('@/context/AppContext');
+  return <AppProvider>{children}</AppProvider>;
 }

@@ -1,0 +1,53 @@
+---
+description: AWS Amplify Gen 2 Development Rules
+globs:
+  - "**/*.{js,jsx,ts,tsx,json,yml,yaml}"
+alwaysApply: true
+---
+# AWS Amplify Gen 2 Development Rules
+# These rules ensure proper use of AWS Amplify Gen 2 and AWS services
+
+## Core Principles
+1. **Always consult AWS Amplify Gen 2 documentation first** before writing any AWS-related code
+2. **Never use Amplify Gen 1 patterns or libraries** - only Gen 2 approaches
+3. **Prioritize security and data privacy** especially for healthcare applications
+4. **Use AWS official SDKs and libraries** instead of third-party alternatives
+
+## AWS Service Integration Rules
+- **Data Operations**: Always use `generateClient` from `aws-amplify/api` for data operations
+- **Authentication**: Use Amplify Gen 2 Auth with proper configuration for healthcare data
+- **API Calls**: Use AWS SDK v3 with Amplify-generated clients, never direct HTTP calls to AWS services
+- **Error Handling**: Implement proper error handling for AWS service calls with user-friendly messages
+
+## Amplify Gen 2 Specific Rules
+- **Backend Definition**: Use TypeScript-based resource definitions in `amplify/data/resource.ts`
+- **Client Generation**: Always generate typesafe clients using Amplify Gen 2 code generation
+- **Environment Variables**: Use Amplify environment variables, not hardcoded credentials
+
+## Healthcare Data Security Rules
+- **HIPAA Compliance**: Ensure all AWS services used support BAA (Business Associate Agreement)
+- **Data Encryption**: Implement encryption at rest and in transit for all healthcare data
+- **Access Control**: Use fine-grained authentication and authorization with Amplify Auth
+- **Audit Logging**: Implement proper logging for all data access and modifications
+
+## Code Generation Guidelines
+- **Documentation First**: Always query AWS documentation MCP server before implementing AWS services
+- **Type Safety**: Prefer TypeScript and generate proper types for all AWS operations
+- **Error Handling**: Handle AWS service errors gracefully with appropriate user feedback
+
+## Prohibited Patterns
+- ❌ Never use Amplify Gen 1 CLI commands or libraries
+- ❌ Avoid direct AWS service URLs or hardcoded endpoints
+- ❌ Don't use deprecated AWS SDK v2 patterns
+- ❌ Never store sensitive data in client-side code
+
+## Required Patterns
+- ✅ Always use Amplify Gen 2 `generateClient()` for data operations
+- ✅ Implement proper error handling for all AWS service calls
+- ✅ Use environment variables for AWS configuration
+- ✅ Include healthcare-specific error messages and user guidance
+
+
+
+
+

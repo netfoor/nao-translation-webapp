@@ -7,22 +7,20 @@ import { defaultProvider } from '@aws-sdk/credential-provider-node';
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   try {
-    const { sourceLanguage, targetLanguage, userId } = JSON.parse(event.body || '{}');
+    const { sourceLanguage, targetLanguage, userId, sampleRate: requestedSampleRate } = JSON.parse(event.body || '{}');
     
     // Generate a unique session ID
     const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    // Build SigV4 presigned URL for Transcribe Streaming WebSocket per AWS docs
+    // Build SigV4 presigned URL for Transcribe Streaming WebSocket
     const region = process.env.AWS_REGION || 'us-east-1';
-    const host = `transcribestreaming.${region}.amazonaws.com:8443`;
-    const baseUrl = `wss://${host}/stream-transcription-websocket`;
-    const query = new URLSearchParams({
-      'language-code': sourceLanguage || 'en-US',
-      'media-encoding': 'pcm',
-      'sample-rate': '16000',
-    });
+    const hostname = `transcribestreaming.${region}.amazonaws.com`;
+    const sampleRate = Number(requestedSampleRate) || 16000;
+    
+    const baseUrl = `wss://${hostname}:8443/stream-transcription-websocket`;
 
-    const unsignedUrl = `${baseUrl}?${query.toString()}`;
+    // Include required query parameters BEFORE signing to ensure canonical request matches
+    const unsigned = parseUrl(`${baseUrl}?language-code=${encodeURIComponent(sourceLanguage || 'en-US')}&media-encoding=pcm&sample-rate=${encodeURIComponent(String(sampleRate))}`);
 
     const signer = new SignatureV4({
       service: 'transcribe',
@@ -32,15 +30,21 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     });
 
     const request = new HttpRequest({
-      ...parseUrl(unsignedUrl),
+      ...unsigned,
       method: 'GET',
-      headers: {
-        host,
-      },
+      headers: { host: `${hostname}:8443` },
     });
 
     const presigned = await signer.presign(request, { expiresIn: 300 });
-    const signedUrl = `${presigned.protocol}//${presigned.hostname}${presigned.path}$${presigned.query ? '?' + Object.entries(presigned.query).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&') : ''}`;
+
+    // Include port explicitly if present (Transcribe WS uses 8443)
+    const portPart = presigned.port ? `:${presigned.port}` : '';
+    const queryPart = presigned.query
+      ? `?${new URLSearchParams(
+          Object.entries(presigned.query).map(([k, v]) => [k, Array.isArray(v) ? v[0] : String(v)])
+        ).toString()}`
+      : '';
+    const signedUrl = `${presigned.protocol}//${presigned.hostname}${portPart}${presigned.path}${queryPart}`;
 
     const response = {
       sessionId,
@@ -51,7 +55,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         sourceLanguage,
         targetLanguage,
         userId,
-        sampleRate: 16000,
+        sampleRate,
         mediaEncoding: 'pcm',
       }
     };

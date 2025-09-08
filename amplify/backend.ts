@@ -4,6 +4,7 @@ import { data } from './data/resource';
 import { storage } from './storage/resource';
 import { transcribeConnection } from './functions/transcribe-connection/resource';
 import { websocketHandler } from './functions/websocket-handler/resource';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 /**
  * @see https://docs.amplify.aws/react/build-a-backend/ to add storage, functions, and more
@@ -73,3 +74,11 @@ backend.addOutput({
     httpApiUrl: httpApi.apiEndpoint,
   },
 });
+
+// Grant Transcribe streaming permissions to the presigning Lambda
+backend.transcribeConnection.resources.lambda.addToRolePolicy(
+  new iam.PolicyStatement({
+    actions: ['transcribe:StartStreamTranscriptionWebSocket'],
+    resources: ['*'],
+  })
+);

@@ -16,6 +16,8 @@ export default function StreamTestPage() {
   const wsRef = useRef<WebSocket | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [partialText, setPartialText] = useState('');
+  const [finalLines, setFinalLines] = useState<string[]>([]);
 
   const fetchSignedUrl = async (): Promise<string> => {
     const httpApiUrl = (outputs as any)?.custom?.httpApiUrl as string | undefined;
@@ -57,6 +59,22 @@ export default function StreamTestPage() {
         if (headers[':message-type'] === 'event' && headers[':event-type'] === 'TranscriptEvent') {
           const bodyText = new TextDecoder('utf-8').decode(msg.body as Uint8Array);
           setLog((p) => [...p, `TranscriptEvent: ${bodyText}`]);
+          try {
+            const parsed = JSON.parse(bodyText);
+            const results = parsed?.Transcript?.Results as any[] | undefined;
+            if (Array.isArray(results)) {
+              for (const r of results) {
+                const alt = r?.Alternatives?.[0];
+                const txt = alt?.Transcript ?? '';
+                if (r?.IsPartial) {
+                  setPartialText(txt);
+                } else if (txt) {
+                  setPartialText('');
+                  setFinalLines((prev) => [...prev, txt]);
+                }
+              }
+            }
+          } catch {}
         } else if (headers[':message-type'] === 'event') {
           setLog((p) => [...p, `Event ${headers[':event-type'] || 'unknown'} (${(msg.body as Uint8Array)?.byteLength || 0} bytes)`]);
         } else if (headers[':message-type'] === 'exception') {
@@ -107,7 +125,16 @@ export default function StreamTestPage() {
       // Some browsers require a connection in the graph; if needed, uncomment below
       // processor.connect(audioCtx.destination);
 
-      // Initialize AWS EventStream codec for proper framing (with CRCs)
+      // Simple energy-based VAD with silence padding
+      const vadState = {
+        isSpeech: false,
+        silenceFrames: 0,
+        speechFrames: 0,
+      };
+      const VAD_THRESHOLD = 0.005; // tune per environment
+      const MIN_SPEECH_FRAMES = 3; // debounce speech start
+      const MAX_SILENCE_PAD_FRAMES = 6; // send a few silent frames at end
+
       const codec = new EventStreamCodec(toUtf8, fromUtf8);
 
       processor.onaudioprocess = (e) => {
@@ -115,10 +142,36 @@ export default function StreamTestPage() {
         const input = e.inputBuffer.getChannelData(0);
         // Resample from the actual device/context rate to requested sampleRate (default 16k)
         const resampled = resampleTo16k(input, audioCtx.sampleRate, sampleRate);
-        
-        // Create proper event stream message for Transcribe
-        const audioEvent = createAudioEvent(codec, floatTo16BitPCM(resampled));
-        ws.send(audioEvent);
+        // Compute RMS energy
+        let sum = 0;
+        for (let i = 0; i < resampled.length; i++) {
+          const s = resampled[i];
+          sum += s * s;
+        }
+        const rms = Math.sqrt(sum / Math.max(1, resampled.length));
+
+        if (rms > VAD_THRESHOLD) {
+          vadState.speechFrames += 1;
+          vadState.silenceFrames = 0;
+          if (!vadState.isSpeech && vadState.speechFrames >= MIN_SPEECH_FRAMES) {
+            vadState.isSpeech = true;
+          }
+        } else {
+          vadState.silenceFrames += 1;
+          vadState.speechFrames = 0;
+        }
+
+        // During speech, send frames; after speech ends, pad with some silence per AWS guidance
+        const shouldSend = vadState.isSpeech || vadState.silenceFrames <= MAX_SILENCE_PAD_FRAMES;
+
+        if (shouldSend) {
+          const audioEvent = createAudioEvent(codec, floatTo16BitPCM(resampled));
+          ws.send(audioEvent);
+        }
+
+        if (vadState.isSpeech && vadState.silenceFrames > MAX_SILENCE_PAD_FRAMES) {
+          vadState.isSpeech = false;
+        }
       };
       
       setLog((p) => [...p, `Recording started (device ${audioCtx.sampleRate}Hz → ${sampleRate}Hz)`]);
@@ -214,6 +267,20 @@ export default function StreamTestPage() {
         {log.map((l, i) => (
           <div key={i} className="mb-1">{l}</div>
         ))}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <h2 className="font-medium mb-1">Partial</h2>
+          <div className="border rounded p-2 min-h-16 text-sm text-gray-700 whitespace-pre-wrap">{partialText}</div>
+        </div>
+        <div>
+          <h2 className="font-medium mb-1">Final Transcript</h2>
+          <div className="border rounded p-2 min-h-16 text-sm text-gray-800 whitespace-pre-wrap">
+            {finalLines.map((line, idx) => (
+              <div key={idx} className="mb-1">{line}</div>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="text-sm">
         <p><strong>Status:</strong> {status}</p>

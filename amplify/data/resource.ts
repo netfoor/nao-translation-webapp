@@ -1,17 +1,38 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 
-/*== STEP 1 ===============================================================
-The section below creates a Todo database table with a "content" field. Try
-adding a new "isDone" field as a boolean. The authorization rule below
-specifies that any unauthenticated user can "create", "read", "update", 
-and "delete" any "Todo" records.
-=========================================================================*/
+/**
+ * Healthcare Translation App Data Schema
+ * Defines models for translation sessions and logs
+ */
 const schema = a.schema({
-  Todo: a
+  TranslationSession: a
     .model({
-      content: a.string(),
+      sessionId: a.id().required(),
+      userId: a.string().required(),
+      sourceLanguage: a.string().required(),
+      targetLanguage: a.string().required(),
+      originalText: a.string(),
+      translatedText: a.string(),
+      enhancedText: a.string(),
+      audioFileUrl: a.string(),
+      translatedAudioUrl: a.string(),
+      status: a.enum(['processing', 'completed', 'failed']),
+      createdAt: a.datetime(),
+      updatedAt: a.datetime(),
     })
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => [allow.owner()]),
+    
+  TranslationLog: a
+    .model({
+      logId: a.id().required(),
+      sessionId: a.string().required(),
+      step: a.enum(['transcribe', 'translate', 'enhance', 'synthesize']),
+      input: a.string(),
+      output: a.string(),
+      processingTime: a.float(),
+      timestamp: a.datetime(),
+    })
+    .authorization((allow) => [allow.owner()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
@@ -19,7 +40,7 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'identityPool',
+    defaultAuthorizationMode: 'userPool',
   },
 });
 

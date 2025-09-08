@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+// Amplify is configured within client components via getDataClient()
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

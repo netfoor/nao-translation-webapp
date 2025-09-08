@@ -46,6 +46,7 @@ alwaysApply: true
 - ✅ Implement proper error handling for all AWS service calls
 - ✅ Use environment variables for AWS configuration
 - ✅ Include healthcare-specific error messages and user guidance
+- Based on iomportant changes or task if the user validate the changes propose create commits in git
 
 
 

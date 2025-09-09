@@ -6,6 +6,7 @@ import { transcribeConnection } from './functions/transcribe-connection/resource
 import { websocketHandler } from './functions/websocket-handler/resource';
 import { translateProcessor } from './functions/translate-processor/resource';
 import { pollyProcessor } from './functions/polly-processor/resource';
+import { bedrockProcessor } from './functions/bedrock-processor/resource';
 import * as iam from 'aws-cdk-lib/aws-iam';
 
 /**
@@ -19,6 +20,7 @@ const backend = defineBackend({
   websocketHandler,
   translateProcessor,
   pollyProcessor,
+  bedrockProcessor,
 });
 
 // Add WebSocket API using CDK
@@ -91,6 +93,15 @@ httpApi.addRoutes({
   ),
 });
 
+httpApi.addRoutes({
+  path: '/enhance',
+  methods: [HttpMethod.POST],
+  integration: new integrations.HttpLambdaIntegration(
+    'BedrockProcessorIntegration',
+    backend.bedrockProcessor.resources.lambda
+  ),
+});
+
 backend.addOutput({
   custom: {
     httpApiUrl: httpApi.apiEndpoint,
@@ -127,6 +138,14 @@ backend.pollyProcessor.resources.lambda.addToRolePolicy(
 backend.transcribeConnection.resources.lambda.addToRolePolicy(
   new iam.PolicyStatement({
     actions: ['transcribe:StartStreamTranscriptionWebSocket'],
+    resources: ['*'],
+  })
+);
+
+// IAM: allow Bedrock model invocation for bedrock-processor
+backend.bedrockProcessor.resources.lambda.addToRolePolicy(
+  new iam.PolicyStatement({
+    actions: ['bedrock:InvokeModel'],
     resources: ['*'],
   })
 );

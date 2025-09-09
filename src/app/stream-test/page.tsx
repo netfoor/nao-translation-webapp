@@ -111,6 +111,8 @@ export default function StreamTestPage() {
     try {
       const httpApiUrl = (outputs as any)?.custom?.httpApiUrl as string | undefined;
       if (!httpApiUrl) throw new Error('HTTP API URL not found');
+      
+      // Step 1: Basic translation
       const res = await fetch(`${httpApiUrl}/translate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -118,10 +120,34 @@ export default function StreamTestPage() {
       });
       if (!res.ok) throw new Error(`Translate error ${res.status}`);
       const json = await res.json();
+      
       if (json?.translatedText) {
-        setTranslations((prev) => [...prev, json.translatedText as string]);
-        // Synthesize speech for the translation
-        await synthesizeSpeech(json.translatedText);
+        // Step 2: Enhance with Bedrock AI for medical accuracy
+        const enhanceRes = await fetch(`${httpApiUrl}/enhance`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            translatedText: json.translatedText, 
+            sourceLanguage: sourceLang, 
+            targetLanguage: targetLang,
+            originalText: text
+          })
+        });
+        
+        let finalText = json.translatedText;
+        if (enhanceRes.ok) {
+          const enhanceJson = await enhanceRes.json();
+          if (enhanceJson?.enhancedText) {
+            finalText = enhanceJson.enhancedText;
+            setLog((p) => [...p, `Enhanced: ${json.translatedText} → ${finalText}`]);
+          }
+        } else {
+          setLog((p) => [...p, `Enhancement failed, using basic translation`]);
+        }
+        
+        setTranslations((prev) => [...prev, finalText]);
+        // Synthesize speech for the enhanced translation
+        await synthesizeSpeech(finalText);
       }
     } catch (e: any) {
       setLog((p) => [...p, `Translate failed: ${e?.message || e}`]);

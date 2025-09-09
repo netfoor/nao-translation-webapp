@@ -18,6 +18,9 @@ export default function StreamTestPage() {
   const [connecting, setConnecting] = useState(false);
   const [partialText, setPartialText] = useState('');
   const [finalLines, setFinalLines] = useState<string[]>([]);
+  const [translations, setTranslations] = useState<string[]>([]);
+  const [sourceLang, setSourceLang] = useState<'en' | 'es' | 'fr' | 'de' | 'it' | 'pt'>('en');
+  const [targetLang, setTargetLang] = useState<'en' | 'es' | 'fr' | 'de' | 'it' | 'pt'>('es');
 
   const fetchSignedUrl = async (): Promise<string> => {
     const httpApiUrl = (outputs as any)?.custom?.httpApiUrl as string | undefined;
@@ -25,7 +28,7 @@ export default function StreamTestPage() {
     const res = await fetch(`${httpApiUrl}/transcribe-connection`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sourceLanguage: 'en-US', targetLanguage: 'es', userId: 'self' }),
+      body: JSON.stringify({ sourceLanguage: sourceLang === 'en' ? 'en-US' : `${targetLang}-US`, targetLanguage: targetLang, userId: 'self' }),
     });
     if (!res.ok) throw new Error(`Lambda error: ${res.status}`);
     const json = await res.json();
@@ -71,6 +74,8 @@ export default function StreamTestPage() {
                 } else if (txt) {
                   setPartialText('');
                   setFinalLines((prev) => [...prev, txt]);
+                  // Send final line to translation endpoint
+                  void translateFinal(txt);
                 }
               }
             }
@@ -99,6 +104,25 @@ export default function StreamTestPage() {
       setStatus('stopped');
       cleanup();
     };
+  };
+
+  const translateFinal = async (text: string) => {
+    try {
+      const httpApiUrl = (outputs as any)?.custom?.httpApiUrl as string | undefined;
+      if (!httpApiUrl) throw new Error('HTTP API URL not found');
+      const res = await fetch(`${httpApiUrl}/translate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, sourceLanguage: sourceLang, targetLanguage: targetLang })
+      });
+      if (!res.ok) throw new Error(`Translate error ${res.status}`);
+      const json = await res.json();
+      if (json?.translatedText) {
+        setTranslations((prev) => [...prev, json.translatedText as string]);
+      }
+    } catch (e: any) {
+      setLog((p) => [...p, `Translate failed: ${e?.message || e}`]);
+    }
   };
 
   const beginCapture = async (ws: WebSocket, sampleRate: number) => {
@@ -235,7 +259,24 @@ export default function StreamTestPage() {
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-4">
       <h1 className="text-2xl font-semibold">Transcribe Stream Test</h1>
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
+        <select className="border p-2 rounded" value={sourceLang} onChange={(e) => setSourceLang(e.target.value as any)}>
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="it">Italian</option>
+          <option value="pt">Portuguese</option>
+        </select>
+        <span>→</span>
+        <select className="border p-2 rounded" value={targetLang} onChange={(e) => setTargetLang(e.target.value as any)}>
+          <option value="es">Spanish</option>
+          <option value="en">English</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="it">Italian</option>
+          <option value="pt">Portuguese</option>
+        </select>
         <button 
           className="px-3 py-2 bg-blue-600 text-white rounded disabled:bg-gray-400" 
           onClick={async () => {
@@ -277,6 +318,14 @@ export default function StreamTestPage() {
           <h2 className="font-medium mb-1">Final Transcript</h2>
           <div className="border rounded p-2 min-h-16 text-sm text-gray-800 whitespace-pre-wrap">
             {finalLines.map((line, idx) => (
+              <div key={idx} className="mb-1">{line}</div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h2 className="font-medium mb-1">Translations</h2>
+          <div className="border rounded p-2 min-h-16 text-sm text-gray-800 whitespace-pre-wrap">
+            {translations.map((line, idx) => (
               <div key={idx} className="mb-1">{line}</div>
             ))}
           </div>

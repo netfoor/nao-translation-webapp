@@ -4,6 +4,7 @@ import { data } from './data/resource';
 import { storage } from './storage/resource';
 import { transcribeConnection } from './functions/transcribe-connection/resource';
 import { websocketHandler } from './functions/websocket-handler/resource';
+import { translateProcessor } from './functions/translate-processor/resource';
 import * as iam from 'aws-cdk-lib/aws-iam';
 
 /**
@@ -15,6 +16,7 @@ const backend = defineBackend({
   storage,
   transcribeConnection,
   websocketHandler,
+  translateProcessor,
 });
 
 // Add WebSocket API using CDK
@@ -69,11 +71,28 @@ httpApi.addRoutes({
   ),
 });
 
+httpApi.addRoutes({
+  path: '/translate',
+  methods: [HttpMethod.POST],
+  integration: new integrations.HttpLambdaIntegration(
+    'TranslateProcessorIntegration',
+    backend.translateProcessor.resources.lambda
+  ),
+});
+
 backend.addOutput({
   custom: {
     httpApiUrl: httpApi.apiEndpoint,
   },
 });
+
+// IAM: allow translate for translate-processor
+backend.translateProcessor.resources.lambda.addToRolePolicy(
+  new iam.PolicyStatement({
+    actions: ['translate:TranslateText'],
+    resources: ['*'],
+  })
+);
 
 // Grant Transcribe streaming permissions to the presigning Lambda
 backend.transcribeConnection.resources.lambda.addToRolePolicy(

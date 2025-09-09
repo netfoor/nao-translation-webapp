@@ -4,6 +4,14 @@
 
 A web-based application that enables seamless, real-time multilingual communication between patients and healthcare providers using advanced AWS AI services.
 
+![alt text](APP.png)
+
+![alt text](signIn.png)
+
+![alt text](HostedIU.png)
+
+
+
 ## 🎯 Project Overview
 
 This application transforms healthcare communication by providing:

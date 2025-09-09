@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { getDataClient } from '@/amplify/client';
+import { configureAmplify } from '@/amplify/config';
 import type { TranslationSession } from '@/types/translation';
 
 type AuthUser = { userId: string } | null;
@@ -20,6 +21,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [loadingUser, setLoadingUser] = useState(true);
 
   useEffect(() => {
+    configureAmplify();
     (async () => {
       try {
         const u = await getCurrentUser();
@@ -48,5 +50,3 @@ export function useApp() {
   if (!ctx) throw new Error('useApp must be used within AppProvider');
   return ctx;
 }
-
-

@@ -190,11 +190,18 @@ export default function HealthcareTranslation() {
   const beginAudioCapture = async (ws: WebSocket) => {
     try {
       setStatus('recording');
+      
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Media devices not supported');
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: { 
           channelCount: 1,
           echoCancellation: true,
-          noiseSuppression: true
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 16000
         } 
       });
       
@@ -216,9 +223,17 @@ export default function HealthcareTranslation() {
         ws.send(audioEvent);
       };
       
-    } catch (err) {
+    } catch (err: any) {
       setStatus('error');
-      setError('Microphone access denied');
+      if (err.name === 'NotAllowedError') {
+        setError('Microphone permission denied. Please allow microphone access.');
+      } else if (err.name === 'NotFoundError') {
+        setError('No microphone found on this device.');
+      } else if (err.name === 'NotSupportedError') {
+        setError('Microphone not supported on this device.');
+      } else {
+        setError('Microphone access failed. Ensure you are using HTTPS.');
+      }
     }
   };
 

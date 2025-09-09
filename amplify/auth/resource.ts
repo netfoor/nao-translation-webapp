@@ -10,9 +10,11 @@ export const auth = defineAuth({
     externalProviders: {
       callbackUrls: [
         'http://localhost:3000/auth/callback',
+        'https://main.d336mee7kyuyk6.amplifyapp.com/auth/callback'
       ],
       logoutUrls: [
         'http://localhost:3000/',
+        'https://main.d336mee7kyuyk6.amplifyapp.com/'
       ],
     }
   },

@@ -33,6 +33,7 @@ export default function HealthcareTranslation() {
   
   const wsRef = useRef<WebSocket | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
 
   const fetchSignedUrl = async (): Promise<string> => {
     const httpApiUrl = (outputs as any)?.custom?.httpApiUrl as string | undefined;
@@ -207,10 +208,18 @@ export default function HealthcareTranslation() {
       
       mediaStreamRef.current = stream;
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Resume AudioContext for Chrome
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+      
       const source = audioCtx.createMediaStreamSource(stream);
       const processor = audioCtx.createScriptProcessor(4096, 1, 1);
       
+      processorRef.current = processor;
       source.connect(processor);
+      processor.connect(audioCtx.destination);
       
       const codec = new EventStreamCodec(toUtf8, fromUtf8);
       
@@ -280,6 +289,10 @@ export default function HealthcareTranslation() {
     wsRef.current = null;
     mediaStreamRef.current?.getTracks().forEach(track => track.stop());
     mediaStreamRef.current = null;
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
   };
 
   const playAudio = (index: number) => {

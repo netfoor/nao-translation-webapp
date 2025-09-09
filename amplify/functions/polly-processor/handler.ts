@@ -7,14 +7,14 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 const pollyClient = new PollyClient({});
 const s3Client = new S3Client({});
 
-// Map language codes to appropriate Polly voices
-const voiceMap: { [key: string]: string } = {
-  'en': 'Joanna',
-  'es': 'Lupe', 
-  'fr': 'Celine',
-  'de': 'Marlene',
-  'it': 'Carla',
-  'pt': 'Camila',
+// Map language codes to appropriate Polly voices with correct language codes
+const voiceMap: { [key: string]: { voiceId: string; languageCode: string } } = {
+  'en': { voiceId: 'Joanna', languageCode: 'en-US' },
+  'es': { voiceId: 'Lucia', languageCode: 'es-ES' }, 
+  'fr': { voiceId: 'Lea', languageCode: 'fr-FR' },
+  'de': { voiceId: 'Vicki', languageCode: 'de-DE' },
+  'it': { voiceId: 'Bianca', languageCode: 'it-IT' },
+  'pt': { voiceId: 'Camila', languageCode: 'pt-BR' },
 };
 
 export const handler: APIGatewayProxyHandler = async (event) => {
@@ -24,13 +24,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'Missing text/targetLanguage' }) };
     }
 
-    const voiceId = voiceMap[targetLanguage] || 'Joanna';
+    const voiceConfig = voiceMap[targetLanguage] || { voiceId: 'Joanna', languageCode: 'en-US' };
     
     // Synthesize speech with Polly
     const synthesizeCommand = new SynthesizeSpeechCommand({
       Text: text,
       OutputFormat: 'mp3',
-      VoiceId: voiceId as any,
+      VoiceId: voiceConfig.voiceId as any,
+      LanguageCode: voiceConfig.languageCode as any,
       Engine: 'neural',
       TextType: 'text',
     });
@@ -70,11 +71,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       body: JSON.stringify({ 
         audioUrl: signedUrl,
         audioKey,
-        voiceId 
+        voiceId: voiceConfig.voiceId,
+        languageCode: voiceConfig.languageCode
       }),
     };
   } catch (error) {
     console.error('polly-processor error:', error);
-    return { statusCode: 500, body: JSON.stringify({ error: 'Internal Server Error' }) };
+    return { statusCode: 500, body: JSON.stringify({ error: 'Internal Server Error', details: (error as Error).message }) };
   }
 };

@@ -5,6 +5,7 @@ import { storage } from './storage/resource';
 import { transcribeConnection } from './functions/transcribe-connection/resource';
 import { websocketHandler } from './functions/websocket-handler/resource';
 import { translateProcessor } from './functions/translate-processor/resource';
+import { pollyProcessor } from './functions/polly-processor/resource';
 import * as iam from 'aws-cdk-lib/aws-iam';
 
 /**
@@ -17,6 +18,7 @@ const backend = defineBackend({
   transcribeConnection,
   websocketHandler,
   translateProcessor,
+  pollyProcessor,
 });
 
 // Add WebSocket API using CDK
@@ -80,6 +82,15 @@ httpApi.addRoutes({
   ),
 });
 
+httpApi.addRoutes({
+  path: '/synthesize',
+  methods: [HttpMethod.POST],
+  integration: new integrations.HttpLambdaIntegration(
+    'PollyProcessorIntegration',
+    backend.pollyProcessor.resources.lambda
+  ),
+});
+
 backend.addOutput({
   custom: {
     httpApiUrl: httpApi.apiEndpoint,
@@ -91,6 +102,24 @@ backend.translateProcessor.resources.lambda.addToRolePolicy(
   new iam.PolicyStatement({
     actions: ['translate:TranslateText'],
     resources: ['*'],
+  })
+);
+
+// Set environment variable for storage bucket
+(backend.pollyProcessor.resources.lambda as any).addEnvironment('STORAGE_BUCKET', backend.storage.resources.bucket.bucketName);
+
+// IAM: allow polly and S3 for polly-processor
+backend.pollyProcessor.resources.lambda.addToRolePolicy(
+  new iam.PolicyStatement({
+    actions: ['polly:SynthesizeSpeech'],
+    resources: ['*'],
+  })
+);
+
+backend.pollyProcessor.resources.lambda.addToRolePolicy(
+  new iam.PolicyStatement({
+    actions: ['s3:PutObject', 's3:GetObject'],
+    resources: [`${backend.storage.resources.bucket.bucketArn}/*`],
   })
 );
 

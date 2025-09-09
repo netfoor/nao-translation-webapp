@@ -19,6 +19,7 @@ export default function StreamTestPage() {
   const [partialText, setPartialText] = useState('');
   const [finalLines, setFinalLines] = useState<string[]>([]);
   const [translations, setTranslations] = useState<string[]>([]);
+  const [audioUrls, setAudioUrls] = useState<string[]>([]);
   const [sourceLang, setSourceLang] = useState<'en' | 'es' | 'fr' | 'de' | 'it' | 'pt'>('en');
   const [targetLang, setTargetLang] = useState<'en' | 'es' | 'fr' | 'de' | 'it' | 'pt'>('es');
 
@@ -119,9 +120,33 @@ export default function StreamTestPage() {
       const json = await res.json();
       if (json?.translatedText) {
         setTranslations((prev) => [...prev, json.translatedText as string]);
+        // Synthesize speech for the translation
+        await synthesizeSpeech(json.translatedText);
       }
     } catch (e: any) {
       setLog((p) => [...p, `Translate failed: ${e?.message || e}`]);
+    }
+  };
+
+  const synthesizeSpeech = async (text: string) => {
+    try {
+      const httpApiUrl = (outputs as any)?.custom?.httpApiUrl as string | undefined;
+      if (!httpApiUrl) throw new Error('HTTP API URL not found');
+      const res = await fetch(`${httpApiUrl}/synthesize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, targetLanguage: targetLang })
+      });
+      if (!res.ok) throw new Error(`Synthesize error ${res.status}`);
+      const json = await res.json();
+      if (json?.audioUrl) {
+        setAudioUrls((prev) => [...prev, json.audioUrl as string]);
+        // Auto-play the audio
+        const audio = new Audio(json.audioUrl);
+        audio.play().catch(e => setLog((p) => [...p, `Audio play failed: ${e}`]));
+      }
+    } catch (e: any) {
+      setLog((p) => [...p, `Synthesize failed: ${e?.message || e}`]);
     }
   };
 
@@ -326,7 +351,17 @@ export default function StreamTestPage() {
           <h2 className="font-medium mb-1">Translations</h2>
           <div className="border rounded p-2 min-h-16 text-sm text-gray-800 whitespace-pre-wrap">
             {translations.map((line, idx) => (
-              <div key={idx} className="mb-1">{line}</div>
+              <div key={idx} className="mb-1 flex items-center gap-2">
+                <span>{line}</span>
+                {audioUrls[idx] && (
+                  <button
+                    onClick={() => new Audio(audioUrls[idx]).play()}
+                    className="text-blue-600 hover:text-blue-800 text-xs"
+                  >
+                    🔊
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </div>

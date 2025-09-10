@@ -33,7 +33,7 @@ export default function HealthcareTranslation() {
   
   const wsRef = useRef<WebSocket | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const processorRef = useRef<AudioWorkletNode | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
 
   const fetchSignedUrl = async (): Promise<string> => {
     const httpApiUrl = (outputs as any)?.custom?.httpApiUrl as string | undefined;
@@ -137,7 +137,7 @@ export default function HealthcareTranslation() {
       setStatus('connecting');
       
       const signedUrl = await fetchSignedUrl();
-      const ws = new WebSocket(signedUrl);
+      const ws = new WebSocket(signedUrl, 'aws.transcribe');
       ws.binaryType = 'arraybuffer';
       
       ws.onopen = async () => {
@@ -223,10 +223,7 @@ export default function HealthcareTranslation() {
       }
       
       const source = audioCtx.createMediaStreamSource(stream);
-      
-      // Use AudioWorkletNode instead of deprecated ScriptProcessorNode
-      await audioCtx.audioWorklet.addModule('/audio-processor.js');
-      const processor = new AudioWorkletNode(audioCtx, 'audio-processor');
+      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
       
       processorRef.current = processor;
       source.connect(processor);
@@ -234,10 +231,10 @@ export default function HealthcareTranslation() {
       
       const codec = new EventStreamCodec(toUtf8, fromUtf8);
       
-      processor.port.onmessage = (e) => {
+      processor.onaudioprocess = (e) => {
         if (ws.readyState !== WebSocket.OPEN) return;
         
-        const input = e.data;
+        const input = e.inputBuffer.getChannelData(0);
         const resampled = resampleTo16k(input, audioCtx.sampleRate, 16000);
         const audioEvent = createAudioEvent(codec, floatTo16BitPCM(resampled));
         ws.send(audioEvent);

@@ -39,14 +39,14 @@ export default function HealthcareTranslation() {
     const httpApiUrl = (outputs as any)?.custom?.httpApiUrl as string | undefined;
     if (!httpApiUrl) throw new Error('API configuration not found');
     
-    
     const res = await fetch(`${httpApiUrl}/transcribe-connection`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         sourceLanguage: sourceLang === 'en' ? 'en-US' : `${sourceLang}-US`, 
         targetLanguage: targetLang, 
-        userId: user?.userId || 'anonymous' 
+        userId: user?.userId || 'anonymous',
+        sampleRate: 16000 // Explicitly specify sample rate
       }),
     });
     
@@ -57,8 +57,9 @@ export default function HealthcareTranslation() {
     }
     
     const json = await res.json();
+    console.log('Connection response:', json);
     
-    if (!json?.signedUrl) throw new Error('Invalid connection response');
+    if (!json?.signedUrl) throw new Error('Invalid connection response - missing signedUrl');
     return json.signedUrl;
   };
 
@@ -137,7 +138,10 @@ export default function HealthcareTranslation() {
       setStatus('connecting');
       
       const signedUrl = await fetchSignedUrl();
-      const ws = new WebSocket(signedUrl, 'aws.transcribe');
+      console.log('Connecting to:', signedUrl);
+      
+      // AWS Transcribe Streaming WebSocket doesn't require a specific subprotocol
+      const ws = new WebSocket(signedUrl);
       ws.binaryType = 'arraybuffer';
       
       ws.onopen = async () => {
@@ -181,11 +185,21 @@ export default function HealthcareTranslation() {
       
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        console.error('WebSocket state:', ws.readyState);
+        console.error('WebSocket URL:', ws.url);
         setStatus('error');
-        setError('Connection failed. Please check your internet connection and try again.');
+        setError('Failed to connect to transcription service. Please check your internet connection and try again.');
       };
-      
-      ws.onclose = () => {
+
+      ws.onclose = (event) => {
+        console.log('WebSocket closed:', event.code, event.reason);
+        
+        // Only log as error for unexpected closures
+        if (event.code !== 1000 && event.code !== 1005) { 
+          // 1000 = normal closure, 1005 = no status (often browser/user initiated)
+          console.error('WebSocket closed unexpectedly:', event.code, event.reason);
+        }
+        
         setStatus('stopped');
         cleanup();
       };
@@ -249,7 +263,7 @@ export default function HealthcareTranslation() {
       } else if (err.name === 'NotSupportedError') {
         setError('Microphone not supported on this device.');
       } else {
-        setError('Microphone access failed. Ensure you are using HTTPS.');
+        setError('Microphone access failed. On mobile devices, HTTPS is required for microphone access.');
       }
     }
   };
@@ -289,14 +303,30 @@ export default function HealthcareTranslation() {
   };
 
   const stopRecording = () => {
-    wsRef.current?.close();
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      // Close with proper status code for normal closure
+      wsRef.current.close(1000, 'User stopped recording');
+    } else if (wsRef.current) {
+      // Force close if not in open state
+      wsRef.current.close();
+    }
     cleanup();
   };
 
   const cleanup = () => {
-    wsRef.current = null;
+    // Clean up WebSocket
+    if (wsRef.current) {
+      if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
+        wsRef.current.close(1000, 'Cleanup');
+      }
+      wsRef.current = null;
+    }
+    
+    // Clean up media stream
     mediaStreamRef.current?.getTracks().forEach(track => track.stop());
     mediaStreamRef.current = null;
+    
+    // Clean up audio processor
     if (processorRef.current) {
       processorRef.current.disconnect();
       processorRef.current = null;
@@ -320,7 +350,18 @@ export default function HealthcareTranslation() {
 
   useEffect(() => {
     configureAmplify();
-    return cleanup;
+    
+    // Handle browser tab/window closing
+    const handleBeforeUnload = () => {
+      cleanup();
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      cleanup();
+    };
   }, []);
 
   if (loadingUser) {

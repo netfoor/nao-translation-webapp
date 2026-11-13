@@ -1,4 +1,4 @@
-# 🏥 Healthcare Translation Web App with Generative AI
+# Healthcare Translation Web App with Generative AI
 
 > **Breaking down language barriers in healthcare through real-time AI-powered translation**
 
@@ -12,7 +12,7 @@ A web-based application that enables seamless, real-time multilingual communicat
 
 
 
-## 🎯 Project Overview
+## Project Overview
 
 This application transforms healthcare communication by providing:
 - **Real-time speech-to-text transcription** with medical terminology accuracy
@@ -21,21 +21,21 @@ This application transforms healthcare communication by providing:
 - **HIPAA-compliant** secure data handling
 - **Mobile-first responsive design** for accessibility
 
-## 🔄 How It Works
+## How It Works
 
 ```
 Patient/Doctor Speech → Transcription → Translation → AI Enhancement → Audio Playback
 ```
 
 ### User Journey
-1. **🎤 Speak**: Patient or healthcare provider speaks in their native language
-2. **📝 Transcribe**: AWS Transcribe Medical converts speech to accurate medical text
-3. **🌐 Translate**: Amazon Translate processes text into target language
-4. **🤖 Enhance**: Amazon Bedrock refines translation quality using generative AI
-5. **🔊 Playback**: Amazon Polly converts translated text to natural speech
-6. **💾 Store**: Session data securely stored for reference (HIPAA compliant)
+1. **Speak**: Patient or healthcare provider speaks in their native language
+2. **Transcribe**: AWS Transcribe Medical converts speech to accurate medical text
+3. **Translate**: Amazon Translate processes text into target language
+4. **Enhance**: Amazon Bedrock refines translation quality using generative AI
+5. **Playback**: Amazon Polly converts translated text to natural speech
+6. **Store**: Session data securely stored for reference (HIPAA compliant)
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 ### Frontend Layer
 - **Framework**: Next.js 15 with React 19
@@ -49,7 +49,7 @@ Patient/Doctor Speech → Transcription → Translation → AI Enhancement → A
 
 ### Backend Services
 
-#### 🎯 Core AI Services
+#### Core AI Services
 | Service | Purpose | Layer |
 |---------|---------|-------|
 | **Amazon Transcribe Medical** | Speech-to-text with medical accuracy | Input |
@@ -57,7 +57,7 @@ Patient/Doctor Speech → Transcription → Translation → AI Enhancement → A
 | **Amazon Bedrock** | AI-enhanced translation refinement | AI Enhancement |
 | **Amazon Polly** | Text-to-speech conversion | Output |
 
-#### 🔧 Infrastructure Services
+#### Infrastructure Services
 | Service | Purpose | Function |
 |---------|---------|----------|
 | **AWS Amplify** | Backend orchestration & deployment | Integration |
@@ -67,28 +67,28 @@ Patient/Doctor Speech → Transcription → Translation → AI Enhancement → A
 | **AWS Lambda** | Serverless processing functions | Compute |
 | **Amazon API Gateway** | Secure API endpoints | Networking |
 
-## 🚀 Key Features
+## Key Features
 
-### 🎨 User Interface
+### User Interface
 - **Dual Transcript Display**: Side-by-side original and translated text
 - **Language Selection**: Easy dropdown for input/output languages
 - **Audio Controls**: Record, play, and replay functionality
 - **Responsive Design**: Optimized for mobile devices and tablets
 - **Accessibility**: Screen reader compatible and keyboard navigation
 
-### 🔒 Security & Compliance
+### Security & Compliance
 - **HIPAA Compliance**: Secure handling of healthcare data
 - **End-to-end Encryption**: Data protection in transit and at rest
 - **User Authentication**: Secure login via Amazon Cognito
 - **Audit Logging**: Complete session tracking for compliance
 
-### ⚡ Performance
+### Performance
 - **Real-time Processing**: Sub-second translation response times
 - **Serverless Architecture**: Auto-scaling based on demand
 - **Edge Optimization**: Global content delivery via CloudFront
 - **Offline Capability**: Basic functionality without internet connection
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Frontend
 ```json
@@ -113,7 +113,7 @@ Patient/Doctor Speech → Transcription → Translation → AI Enhancement → A
 }
 ```
 
-## 📊 Data Flow Architecture
+## Data Flow Architecture
 
 
 ![alt text](healthcare_translation_architecture.png)
@@ -141,7 +141,7 @@ graph TD
     L[Amazon S3] --> H
 ```
 
-## 🎯 Use Cases
+## Use Cases
 
 ### Primary Users
 - **Healthcare Providers**: Doctors, nurses, medical staff
@@ -156,7 +156,7 @@ graph TD
 4. **Discharge Instructions**: Clear post-treatment communication
 5. **Telemedicine**: Remote consultation support
 
-## 🔧 Development Setup
+## Development Setup
 
 ### Prerequisites
 - Node.js 18+ and npm
@@ -183,7 +183,7 @@ npx amplify push
 npm run dev
 ```
 
-## 📈 Future Enhancements
+## Future Enhancements
 
 - **Multi-modal Input**: Support for text and image translation
 - **Specialty Languages**: Support for sign language interpretation
@@ -191,14 +191,14 @@ npm run dev
 - **Integration APIs**: Connect with existing EHR systems
 - **Offline Mode**: Enhanced functionality without internet connectivity
 
-## 🤝 Contributing
+## Contributing
 
 This project follows healthcare data security standards. Please review our contribution guidelines and security policies before submitting pull requests.
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
-**Built with ❤️ for better healthcare communication**
+**Built with for better healthcare communication**
